@@ -1,0 +1,19 @@
+@{
+    ViewData["Title"] = "Click Counter";
+    bool dark = (bool)ViewBag.DarkMode;
+}
+
+@if (dark)
+{
+    <style>
+        body { background-color: #222; color: #eee; }
+    </style>
+}
+
+<h1>Click Counter (v2) @if(dark){<span>(Dark Mode ON)</span>}</h1>
+<p>Current count: @ViewBag.Count</p>
+<form method="post" asp-action="Increment">
+    <button type="submit" @(dark ? "style=\"background:#444;color:#fff;\"" : "")>
+        Click me!
+    </button>
+</form>

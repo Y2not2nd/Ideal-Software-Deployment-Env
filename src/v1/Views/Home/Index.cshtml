@@ -1,0 +1,9 @@
+@{
+    ViewData["Title"] = "Click Counter";
+}
+
+<h1>Click Counter (v1)</h1>
+<p>Current count: @ViewBag.Count</p>
+<form method="post" asp-action="Increment">
+    <button type="submit">Click me!</button>
+</form>
