@@ -107,10 +107,8 @@ The Terraform configuration creates the following Azure resources in the UK Sout
 ## GitHub Secrets Required
 
 - `AZURE_CREDENTIALS`: Service principal credentials
-- `REGISTRY_USERNAME`: ACR admin username
-- `REGISTRY_PASSWORD`: ACR admin password
-- `WEBSITE_NAME`: Azure Web App name
-- `ACR_LOGIN_SERVER`: ACR login server URL
+- `ACR_LOGIN_SERVER`: ACR login server URL (yassindevacr.azurecr.io)
+- `KEY_VAULT_NAME`: Azure Key Vault name (yassindev-kv-tleoqsfk)
 
 ## Monitoring & Logs
 

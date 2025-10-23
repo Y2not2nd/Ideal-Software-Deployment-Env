@@ -7,5 +7,5 @@ variable "location" {
 variable "prefix" {
   description = "Prefix for all resource names"
   type        = string
-  default     = "yassin-matek"
+  default     = "yassindev"
 }

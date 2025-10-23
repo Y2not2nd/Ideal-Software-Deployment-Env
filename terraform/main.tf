@@ -49,11 +49,13 @@ resource "azurerm_linux_web_app" "webapp" {
 # Deployment Slot "staging"
 resource "azurerm_linux_web_app_slot" "staging_slot" {
   name           = "staging"
-  location       = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  service_plan_id = azurerm_service_plan.asp.id
-  app_service_name = azurerm_linux_web_app.webapp.name
-  depends_on     = [azurerm_linux_web_app.webapp]
+  app_service_id = azurerm_linux_web_app.webapp.id
+  
+  site_config {
+    minimum_tls_version = "1.2"
+  }
+  
+  depends_on = [azurerm_linux_web_app.webapp]
 }
 
 # Azure SQL Server
@@ -62,7 +64,7 @@ resource "random_password" "sql_admin_password" {
   special = true
 }
 
-resource "azurerm_sql_server" "sqlsrv" {
+resource "azurerm_mssql_server" "sqlsrv" {
   name                         = "${var.prefix}-sqlsrv"
   resource_group_name          = azurerm_resource_group.rg.name
   location                     = azurerm_resource_group.rg.location
@@ -73,42 +75,34 @@ resource "azurerm_sql_server" "sqlsrv" {
 }
 
 # Allow Azure services (0.0.0.0)
-resource "azurerm_sql_firewall_rule" "allow_azure" {
-  name                = "AllowAzure"
-  resource_group_name = azurerm_resource_group.rg.name
-  server_name         = azurerm_sql_server.sqlsrv.name
-  start_ip_address    = "0.0.0.0"
-  end_ip_address      = "0.0.0.0"
+resource "azurerm_mssql_firewall_rule" "allow_azure" {
+  name             = "AllowAzure"
+  server_id        = azurerm_mssql_server.sqlsrv.id
+  start_ip_address = "0.0.0.0"
+  end_ip_address   = "0.0.0.0"
 }
 
-resource "azurerm_sql_database" "sqldb" {
-  name                = "${var.prefix}-sqldb"
-  resource_group_name = azurerm_resource_group.rg.name
-  server_name         = azurerm_sql_server.sqlsrv.name
-  requested_service_objective_name = "Basic"
+resource "azurerm_mssql_database" "sqldb" {
+  name      = "${var.prefix}-sqldb"
+  server_id = azurerm_mssql_server.sqlsrv.id
+  sku_name  = "Basic"
 }
 
 # Azure Key Vault
-resource "random_string" "kv_suffix" {
-  length  = 8
-  upper   = false
-  number  = false
-  special = false
-}
-
 resource "azurerm_key_vault" "kv" {
-  name                = "${var.prefix}-kv-${random_string.kv_suffix.result}"
+  name                = "yassindev-kv-tleoqsfk"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   tenant_id           = data.azurerm_client_config.current.tenant_id
   sku_name            = "standard"
   soft_delete_retention_days = 7
+  purge_protection_enabled = false
   
   # Access policy for current user (so we can add secrets)
   access_policy {
     tenant_id = data.azurerm_client_config.current.tenant_id
     object_id = data.azurerm_client_config.current.object_id
-    secret_permissions = ["get", "list", "set"]
+    secret_permissions = ["Get", "List", "Set", "Delete", "Recover", "Backup", "Restore", "Purge"]
   }
 }
 
@@ -119,19 +113,19 @@ resource "azurerm_key_vault_access_policy" "app_policy" {
   key_vault_id = azurerm_key_vault.kv.id
   tenant_id    = data.azurerm_client_config.current.tenant_id
   object_id    = azurerm_linux_web_app.webapp.identity[0].principal_id
-  secret_permissions = ["get", "list"]
+  secret_permissions = ["Get", "List"]
 }
 
 # Store SQL connection string in Key Vault
 resource "azurerm_key_vault_secret" "sql_conn" {
   name         = "SqlConnectionString"
-  value        = "Server=tcp:${azurerm_sql_server.sqlsrv.name}.database.windows.net,1433;Initial Catalog=${azurerm_sql_database.sqldb.name};Persist Security Info=False;User ID=${azurerm_sql_server.sqlsrv.administrator_login};Password=${random_password.sql_admin_password.result};"
+  value        = "Server=tcp:${azurerm_mssql_server.sqlsrv.name}.database.windows.net,1433;Initial Catalog=${azurerm_mssql_database.sqldb.name};Persist Security Info=False;User ID=${azurerm_mssql_server.sqlsrv.administrator_login};Password=${random_password.sql_admin_password.result};"
   key_vault_id = azurerm_key_vault.kv.id
 }
 
 # Azure Container Registry (ACR)
 resource "azurerm_container_registry" "acr" {
-  name                = "${var.prefix}acr"
+  name                = "yassindevacr"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   sku                 = "Standard"
