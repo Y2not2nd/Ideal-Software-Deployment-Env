@@ -49,6 +49,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      # Setup .NET SDK
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x'
+
       # Azure Login (Service Principal)
       - name: Sign in to Azure
         uses: azure/login@v2
@@ -63,7 +69,7 @@ jobs:
       # Build and push Docker image for v1
       - name: Build and Push Docker image
         run: |
-          IMAGE_NAME="${{ secrets.ACR_LOGIN_SERVER }}/clickcounter:${GITHUB_SHA}"
+          IMAGE_NAME="yassindevacr.azurecr.io/clickcounter:${GITHUB_SHA}"
           docker build -f src/v1/Dockerfile -t $IMAGE_NAME src/v1
           docker push $IMAGE_NAME
 
@@ -73,7 +79,7 @@ jobs:
         with:
           app-name: "yassin-matek-app"
           slot-name: "staging"
-          images: ${{ secrets.ACR_LOGIN_SERVER }}/clickcounter:${{ github.sha }}
+          images: yassindevacr.azurecr.io/clickcounter:${{ github.sha }}
 
       # Swap staging into production
       - name: Swap Slots

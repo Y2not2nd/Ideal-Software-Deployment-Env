@@ -22,6 +22,13 @@ jobs:
     needs: [tfsec_scan] # ensure tfsec still passes on any IaC updates
     steps:
       - uses: actions/checkout@v3
+      
+      # Setup .NET SDK
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x'
+      
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -35,7 +42,7 @@ jobs:
       # Build and push Docker image for v2
       - name: Build and Push Docker image (v2)
         run: |
-          IMAGE_NAME="${{ secrets.ACR_LOGIN_SERVER }}/clickcounter:${GITHUB_SHA}"
+          IMAGE_NAME="yassindevacr.azurecr.io/clickcounter:${GITHUB_SHA}"
           docker build -f src/v2/Dockerfile -t $IMAGE_NAME src/v2
           docker push $IMAGE_NAME
 
@@ -45,7 +52,7 @@ jobs:
         with:
           app-name: "yassin-matek-app"
           slot-name: "staging"
-          images: ${{ secrets.ACR_LOGIN_SERVER }}/clickcounter:${{ github.sha }}
+          images: yassindevacr.azurecr.io/clickcounter:${{ github.sha }}
 
       # Swap staging into production (v2 becomes live)
       - name: Swap Slots to Release v2
