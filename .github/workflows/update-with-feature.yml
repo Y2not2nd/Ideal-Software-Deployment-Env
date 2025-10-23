@@ -1,8 +1,6 @@
 name: update-with-feature
 on:
-  workflow_dispatch: # or push to main after merging v2
-  push:
-    branches: [ main ]
+  workflow_dispatch:
 jobs:
   # 1. Terraform Security Scan (tfsec)
   tfsec_scan:
