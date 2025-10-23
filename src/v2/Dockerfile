@@ -1,19 +1,21 @@
-# e.g. src/v1/Dockerfile and src/v2/Dockerfile
+# Stage 1: Build
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
-WORKDIR /app
+WORKDIR /src
 
-# Copy project and restore
-COPY *.csproj ./
-RUN dotnet restore
+# Copy project file and restore dependencies
+COPY ClickCounterApp.csproj .
+RUN dotnet restore ClickCounterApp.csproj
 
-# Copy remaining source and publish
-COPY . ./
-RUN dotnet publish -c Release -o /app/publish
+# Copy the rest of the source code
+COPY . .
 
-# Run stage
+# Publish the app
+RUN dotnet publish ClickCounterApp.csproj -c Release -o /app/publish
+
+# Stage 2: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:6.0
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Use HTTPS redirection (App Service will handle TLS termination)
+# Start the app
 ENTRYPOINT ["dotnet", "ClickCounterApp.dll"]

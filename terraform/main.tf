@@ -71,7 +71,8 @@ resource "azurerm_mssql_server" "sqlsrv" {
   version                      = "12.0"
   administrator_login          = "${var.prefix}-admin"
   administrator_login_password = random_password.sql_admin_password.result
-  public_network_access_enabled = true
+  public_network_access_enabled = false
+  minimum_tls_version          = "1.2"
 }
 
 # Allow Azure services (0.0.0.0)
@@ -88,6 +89,31 @@ resource "azurerm_mssql_database" "sqldb" {
   sku_name  = "Basic"
 }
 
+# SQL Server Extended Auditing Policy
+resource "azurerm_mssql_server_extended_auditing_policy" "audit_policy" {
+  server_id                               = azurerm_mssql_server.sqlsrv.id
+  storage_endpoint                        = azurerm_storage_account.audit_storage.primary_blob_endpoint
+  storage_account_access_key              = azurerm_storage_account.audit_storage.primary_access_key
+  storage_account_access_key_is_secondary = false
+  retention_in_days                       = 90
+  log_monitoring_enabled                  = true
+}
+
+# Storage Account for SQL Auditing
+resource "azurerm_storage_account" "audit_storage" {
+  name                     = "${var.prefix}auditstorage"
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  
+  blob_properties {
+    delete_retention_policy {
+      days = 90
+    }
+  }
+}
+
 # Azure Key Vault
 resource "azurerm_key_vault" "kv" {
   name                = "yassindev-kv-tleoqsfk"
@@ -96,7 +122,12 @@ resource "azurerm_key_vault" "kv" {
   tenant_id           = data.azurerm_client_config.current.tenant_id
   sku_name            = "standard"
   soft_delete_retention_days = 7
-  purge_protection_enabled = false
+  purge_protection_enabled = true
+  
+  network_acls {
+    default_action = "Deny"
+    bypass         = "AzureServices"
+  }
   
   # Access policy for current user (so we can add secrets)
   access_policy {
@@ -121,6 +152,8 @@ resource "azurerm_key_vault_secret" "sql_conn" {
   name         = "SqlConnectionString"
   value        = "Server=tcp:${azurerm_mssql_server.sqlsrv.name}.database.windows.net,1433;Initial Catalog=${azurerm_mssql_database.sqldb.name};Persist Security Info=False;User ID=${azurerm_mssql_server.sqlsrv.administrator_login};Password=${random_password.sql_admin_password.result};"
   key_vault_id = azurerm_key_vault.kv.id
+  content_type = "text/plain"
+  expiration_date = timeadd(timestamp(), "8760h") # 1 year from now
 }
 
 # Azure Container Registry (ACR)
