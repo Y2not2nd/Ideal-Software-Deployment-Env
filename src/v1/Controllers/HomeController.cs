@@ -21,16 +21,12 @@ namespace ClickCounterApp.Controllers
             using (var conn = new SqlConnection(_connString))
             {
                 conn.Open();
-                var cmd = new SqlCommand("SELECT TOP 1 Count FROM Clicks WHERE Id=1", conn);
+                var cmd = new SqlCommand("SELECT ISNULL(SUM([Count]), 0) FROM Clicks", conn);
                 var result = cmd.ExecuteScalar();
 
-                if (result != null)
-                    current = Convert.ToInt32(result);
-                else
+                if (result != null && result != DBNull.Value)
                 {
-                    // Initialize first row if table is empty
-                    var initCmd = new SqlCommand("INSERT INTO Clicks (Count) VALUES (0)", conn);
-                    initCmd.ExecuteNonQuery();
+                    current = Convert.ToInt32(result);
                 }
 
                 ViewBag.Count = current;
@@ -45,8 +41,23 @@ namespace ClickCounterApp.Controllers
             using (var conn = new SqlConnection(_connString))
             {
                 conn.Open();
-                // ✅ Increment counter
-                var cmd = new SqlCommand("UPDATE Clicks SET Count = Count + 1 WHERE Id=1", conn);
+                var cmd = new SqlCommand(@"
+DECLARE @targetId INT;
+
+SELECT TOP (1) @targetId = Id
+FROM Clicks
+ORDER BY Id;
+
+IF @targetId IS NULL
+BEGIN
+    INSERT INTO Clicks (Count) VALUES (1);
+END
+ELSE
+BEGIN
+    UPDATE Clicks
+    SET Count = Count + 1
+    WHERE Id = @targetId;
+END", conn);
                 cmd.ExecuteNonQuery();
             }
 
